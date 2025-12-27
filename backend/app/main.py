@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 import mimetypes
 import logging
+from pathlib import Path
 
 # -----------------------------
 # Logging Configuration
@@ -17,7 +18,7 @@ logger = logging.getLogger("file-transfer")
 # -----------------------------
 # Configuration
 # -----------------------------
-STORAGE_DIR = "shared"
+STORAGE_DIR = Path("shared")
 
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR)
@@ -110,3 +111,21 @@ def download_file(filename: str):
 @app.get("/")
 def root():
     return {"status": "backend running"}
+
+
+# -----------------------------
+# List Files Endpoint
+# -----------------------------
+@app.get("/files")
+def list_files():
+    try:
+
+        files = []
+        for file in STORAGE_DIR.iterdir():
+            if file.is_file():
+                files.append({"name": file.name, "size": file.stat().st_size})
+
+        return files
+    except Exception as e:
+        print("Error listing files:", e)
+        return []  # Return empty list instead of 500
