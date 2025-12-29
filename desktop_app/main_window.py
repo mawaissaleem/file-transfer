@@ -11,6 +11,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from .api_client import get_file_list, download_file
 from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QProgressBar
+from .upload_worker import UploadWorker
+from .download_worker import DownloadWorker
 
 
 class MainWindow(QMainWindow):
@@ -37,6 +40,12 @@ class MainWindow(QMainWindow):
         self.download_button = QPushButton("⬇ Download Selected File")
         self.download_button.clicked.connect(self.download_selected_file)
 
+        self.upload_progress = QProgressBar()
+        self.upload_progress.setValue(0)
+
+        self.download_progress = QProgressBar()
+        self.download_progress.setValue(0)
+
         # Layout
         layout = QVBoxLayout()
         layout.addWidget(self.status_label)
@@ -44,6 +53,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.refresh_button)
         layout.addWidget(self.file_list)
         layout.addWidget(self.download_button)
+        layout.addWidget(self.upload_progress)
+        layout.addWidget(self.download_progress)
 
         container = QWidget()
         container.setLayout(layout)
@@ -61,23 +72,16 @@ class MainWindow(QMainWindow):
             self.status_label.setText("No file selected")
             return
 
+        # Reset UI
+        self.upload_progress.setValue(0)
         self.status_label.setText("Uploading...")
 
-        try:
-            with open(file_path, "rb") as f:
-                response = requests.post(
-                    "http://127.0.0.1:8000/upload",
-                    files={"file": f},
-                    timeout=10,
-                )
-
-            if response.status_code == 200:
-                self.status_label.setText("✅ Upload successful")
-            else:
-                self.status_label.setText(f"❌ Upload failed ({response.status_code})")
-
-        except Exception as e:
-            self.status_label.setText(f"❌ Error: {str(e)}")
+        # Start background worker
+        self.upload_worker = UploadWorker(file_path)
+        self.upload_worker.progress.connect(self.upload_progress.setValue)
+        self.upload_worker.success.connect(self.on_upload_success)
+        self.upload_worker.error.connect(self.on_upload_error)
+        self.upload_worker.start()
 
     def closeEvent(self, event):
         self.backend_manager.stop()
@@ -110,14 +114,31 @@ class MainWindow(QMainWindow):
         filename = item.text()
 
         save_path, _ = QFileDialog.getSaveFileName(self, "Save File As", filename)
-
         if not save_path:
             return
 
+        # Reset UI
+        self.download_progress.setValue(0)
         self.status_label.setText("Downloading...")
 
-        try:
-            download_file(filename, save_path)
-            self.status_label.setText("✅ Download complete")
-        except Exception as e:
-            self.status_label.setText(f"❌ Download failed: {str(e)}")
+        # Start worker
+        self.download_worker = DownloadWorker(filename, save_path)
+        self.download_worker.progress.connect(self.download_progress.setValue)
+        self.download_worker.success.connect(self.on_download_success)
+        self.download_worker.error.connect(self.on_download_error)
+        self.download_worker.start()
+
+    def on_upload_success(self, message):
+        self.status_label.setText(f"✅ {message}")
+        self.upload_progress.setValue(100)
+        self.load_file_list()  # refresh list after upload
+
+    def on_upload_error(self, error):
+        self.status_label.setText(f"❌ Upload failed: {error}")
+
+    def on_download_success(self, message):
+        self.status_label.setText(f"✅ {message}")
+        self.download_progress.setValue(100)
+
+    def on_download_error(self, error):
+        self.status_label.setText(f"❌ Download failed: {error}")
