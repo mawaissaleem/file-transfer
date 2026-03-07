@@ -1,6 +1,10 @@
 import requests
 from PySide6.QtCore import QThread, Signal
 
+# from api_client import BASE_URL
+from dotenv import load_dotenv
+import os
+
 
 class DownloadWorker(QThread):
     progress = Signal(int)
@@ -11,10 +15,11 @@ class DownloadWorker(QThread):
         super().__init__()
         self.filename = filename
         self.save_path = save_path
+        load_dotenv()
 
     def run(self):
         try:
-            url = f"http://127.0.0.1:8000/files/{self.filename}"
+            url = f"{os.getenv('BASE_URL')}/files/{self.filename}"
             with requests.get(url, stream=True, timeout=30) as r:
                 r.raise_for_status()
 

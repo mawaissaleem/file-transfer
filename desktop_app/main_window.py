@@ -8,7 +8,11 @@ from PySide6.QtWidgets import (
     QListWidget,
     QWidget,
 )
+from PySide6.QtWidgets import QLabel
+from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
+from pathlib import Path
+
 from .api_client import get_file_list, download_file
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtWidgets import QProgressBar
@@ -19,6 +23,10 @@ from .download_worker import DownloadWorker
 class MainWindow(QMainWindow):
     def __init__(self, backend_manager):
         super().__init__()
+
+        # temporary path to show the qrcode -> fix it later
+        BASE_DIR = Path(__file__).parent
+        qr_path = BASE_DIR / "./../qr_code.png"
 
         self.backend_manager = backend_manager
 
@@ -37,6 +45,11 @@ class MainWindow(QMainWindow):
 
         self.file_list = QListWidget()
 
+        label = QLabel()
+        pixmap = QPixmap(str(qr_path))
+        print(f"pixmap: {pixmap}")
+        label.setPixmap(pixmap)
+
         self.download_button = QPushButton("⬇ Download Selected File")
         self.download_button.clicked.connect(self.download_selected_file)
 
@@ -52,6 +65,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.upload_button)
         layout.addWidget(self.refresh_button)
         layout.addWidget(self.file_list)
+        layout.addWidget(label)
         layout.addWidget(self.download_button)
         layout.addWidget(self.upload_progress)
         layout.addWidget(self.download_progress)

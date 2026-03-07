@@ -5,8 +5,7 @@ from requests_toolbelt.multipart.encoder import (
     MultipartEncoderMonitor,
 )
 import os
-
-BASE_URL = "http://127.0.0.1:8000"
+from dotenv import load_dotenv
 
 
 class UploadWorker(QThread):
@@ -17,6 +16,7 @@ class UploadWorker(QThread):
     def __init__(self, file_path):
         super().__init__()
         self.file_path = file_path
+        load_dotenv()
 
     def run(self):
         try:
@@ -37,7 +37,7 @@ class UploadWorker(QThread):
             headers = {"Content-Type": monitor.content_type}
 
             response = requests.post(
-                f"{BASE_URL}/upload",
+                f"{os.getenv('BASE_URL')}/upload",
                 data=monitor,
                 headers=headers,
                 timeout=60,
